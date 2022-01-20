@@ -59,7 +59,7 @@ postsubmits:
             - name: GIT_SECRET_AUTH
               valueFrom:
                 secretKeyRef:
-                  name: git-credentials-florencepascual
+                  name: git-credentials-alunsin
                   key: password
           # resources:
           #   requests:
