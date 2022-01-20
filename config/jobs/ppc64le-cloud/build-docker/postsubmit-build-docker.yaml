@@ -27,8 +27,8 @@ postsubmits:
             git config --global user.email "alunsin@us.ibm.com"
             git config --global user.name "Aurelien Lun-Sin"
             git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
-            git checkout dev-docker-build
             cd docker-ce-build
+            git checkout dev-docker-build
             chmod a+x *.sh
             ./prow-build-docker.sh
             exit_code_script=`echo $?`
