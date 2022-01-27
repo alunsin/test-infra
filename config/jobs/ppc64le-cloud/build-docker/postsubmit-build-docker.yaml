@@ -1,10 +1,10 @@
 postsubmits:
-  ppc64le-cloud/docker-ce-build:
+  alunsin/docker-ce-build:
     - name: postsubmit-build-docker-al
       cluster: k8s-ppc64le-cluster
       decorate: true
       branches:
-        - main
+        - dev-docker-build
       run_if_changed: 'env/env.list'
       reporter_config:
         slack:
@@ -22,11 +22,17 @@ postsubmits:
           args:
           - -c
           - |
-            cd ..
-            rm -rf docker-ce-build
-            git config --global user.email "alunsin@us.ibm.com"
-            git config --global user.name "Aurelien Lun-Sin"
-            git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
+            git remote -v
+            sleep 3600
+            exit 1
+
+            #cd ..
+            #rm -rf docker-ce-build
+            cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
+
+            git config --global user.email "ppc64le@in.ibm.com"
+            git config --global user.name "Runtime Team Jobs"
+            #git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
             cd docker-ce-build
             git checkout dev-docker-build
             chmod a+x *.sh
@@ -50,16 +56,14 @@ postsubmits:
           volumeMounts:
           - name: docker-root
             mountPath: /var/lib/docker
+          - name: ssh-key
+            readOnly: true
+            mountPath: /etc/ssh-key
           env:
             - name: S3_SECRET_AUTH
               valueFrom:
                 secretKeyRef:
                   name: docker-s3-credentials
-                  key: password
-            - name: GIT_SECRET_AUTH
-              valueFrom:
-                secretKeyRef:
-                  name: git-credentials-alunsin
                   key: password
           # resources:
           #   requests:
@@ -71,6 +75,10 @@ postsubmits:
         volumes:
         - name: docker-root
           emptyDir: {}
+        - name: ssh-key
+          secret:
+            secretName: git-ssh-docker-ce-build
+            
     - name: postsubmit-build-containerd
       cluster: k8s-ppc64le-cluster
       decorate: true
