@@ -39,7 +39,7 @@ postsubmits:
             git fetch origin  $PULL_BASE_REF
             git branch --set-upstream-to origin/$PULL_BASE_REF
 
-            echo DATE=\"${DATE}\" 2>&1 > tee env/date.list
+            echo DATE=\"${DATE}\" 2>&1 > env/date.list
             git add env/date.list
             git commit -m "New test commit from a Prow job" && git push
             exit 0
