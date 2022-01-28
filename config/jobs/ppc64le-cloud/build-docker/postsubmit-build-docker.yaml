@@ -22,16 +22,20 @@ postsubmits:
           args:
           - -c
           - |
+            echo "Debug git remote"
+            echo "PULL_BASE_REF=$PULL_BASE_REF"
             git remote -v
-            sleep 3600
-            exit 1
 
-            #cd ..
-            #rm -rf docker-ce-build
             cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
+            git remote add origin git@github.com:alunsin/docker-ce-build.git
+            git branch --set-upstream-to origin dev-docker-build
 
             git config --global user.email "ppc64le@in.ibm.com"
             git config --global user.name "Runtime Team Jobs"
+
+            sleep 600
+            exit 1
+
             #git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
             cd docker-ce-build
             git checkout dev-docker-build
@@ -78,7 +82,7 @@ postsubmits:
         - name: ssh-key
           secret:
             secretName: git-ssh-docker-ce-build
-            
+
     - name: postsubmit-build-containerd
       cluster: k8s-ppc64le-cluster
       decorate: true
