@@ -22,19 +22,27 @@ postsubmits:
           args:
           - -c
           - |
+            set -x
             echo "Debug git remote"
             echo "PULL_BASE_REF=$PULL_BASE_REF"
             git remote -v
 
+            mkdir -p ~/.ssh
             cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
-            git remote add origin git@github.com:alunsin/docker-ce-build.git
-            git branch --set-upstream-to origin dev-docker-build
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
             git config --global user.email "ppc64le@in.ibm.com"
             git config --global user.name "Runtime Team Jobs"
 
-            sleep 600
-            exit 1
+            git remote add origin git@github.com:alunsin/docker-ce-build.git
+            git fetch origin  $PULL_BASE_REF
+            git branch --set-upstream-to origin/$PULL_BASE_REF
+            
+            echo DATE=\"${DATE}\" 2>&1 '|' tee env/date.list
+            git add env/date.list
+            git commit -m "New test commit from a Prow job" && git push
+            exit 0
 
             #git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
             cd docker-ce-build
