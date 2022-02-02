@@ -4,7 +4,8 @@ postsubmits:
       cluster: k8s-ppc64le-cluster
       decorate: true
       branches:
-        - dev-docker-build
+        #- dev-docker-build
+         -  refacto-dockerd-starting
       run_if_changed: 'env/env.list'
       reporter_config:
         slack:
@@ -39,28 +40,14 @@ postsubmits:
             git fetch origin  $PULL_BASE_REF
             git branch --set-upstream-to origin/$PULL_BASE_REF
 
-            echo DATE=\"${DATE}\" 2>&1 > env/date.list
-            git add env/date.list
-            git commit -m "New test commit from a Prow job" && git push
-            exit 0
-
-            #git clone https://alunsin:${GIT_SECRET_AUTH}@github.com/alunsin/docker-ce-build.git
-            cd docker-ce-build
-            git checkout dev-docker-build
             chmod a+x *.sh
             ./prow-build-docker.sh
             exit_code_script=`echo $?`
             echo "Exit code of the script prow-build-docker : $exit_code_script"
-            pid=`/usr/bin/pgrep dockerd`
-            echo "Pid of dockerd : $pid"
             if [[ $exit_code_script -eq 0 ]]
             then
-              echo "Success"
-              kill $pid
               exit 0
             else
-              echo "Fail"
-              kill $pid
               exit 1
             fi
           securityContext:
@@ -123,16 +110,12 @@ postsubmits:
             ./prow-build-containerd.sh
             exitCode_script=`echo $?`
             echo "Exit code of the script prow-build-containerd : $exitCode_script"
-            pid=`/usr/bin/pgrep dockerd`
-            echo "Pid of dockerd : $pid"
             if [[ $exitCode_script -eq 0 ]]
             then
               echo "Success"
-              kill $pid
               exit 0
             else
               echo "Fail"
-              kill $pid
               exit 1
             fi
           securityContext:
