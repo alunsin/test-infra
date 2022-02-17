@@ -4,8 +4,8 @@ postsubmits:
       cluster: k8s-ppc64le-cluster
       decorate: true
       branches:
-        #- dev-docker-build
-         -  refacto-dockerd-starting
+        - dev-docker-build
+        # -  refacto-dockerd-starting
       run_if_changed: 'env/env.list'
       reporter_config:
         slack:
@@ -24,23 +24,15 @@ postsubmits:
           - -c
           - |
             set -x
-            echo "Debug git remote"
-            echo "PULL_BASE_REF=$PULL_BASE_REF"
-            git remote -v
+            ls -ali
+            chmod a+x *.sh            
 
+            #Configure git SSH key from ssh-key secret
             mkdir -p ~/.ssh
             cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
-            git config --global user.email "ppc64le@in.ibm.com"
-            git config --global user.name "Runtime Team Jobs"
-
-            git remote add origin git@github.com:alunsin/docker-ce-build.git
-            git fetch origin  $PULL_BASE_REF
-            git branch --set-upstream-to origin/$PULL_BASE_REF
-
-            chmod a+x *.sh
             ./prow-build-docker.sh
             exit_code_script=`echo $?`
             echo "Exit code of the script prow-build-docker : $exit_code_script"
