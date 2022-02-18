@@ -74,8 +74,8 @@ plank:
         entrypoint: quay.io/powercloud/entrypoint:v20220201-d251d8b00d
         initupload: quay.io/powercloud/initupload:v20220201-d251d8b00d
         sidecar: quay.io/powercloud/sidecar:v20220201-d251d8b00d
-      ssh_key_secrets:
-        - bot-ssh-secret
+      #ssh_key_secrets:
+      #  - bot-ssh-secret
 
 tide:
   sync_period: 2m
