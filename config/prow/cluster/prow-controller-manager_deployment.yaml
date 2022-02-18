@@ -8,6 +8,12 @@ metadata:
     app: prow-controller-manager
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: prow-controller-manager
@@ -28,7 +34,7 @@ spec:
             - --github-endpoint=https://api.github.com
             - --enable-controller=plank
             - --job-config-path=/etc/job-config
-          image: gcr.io/k8s-prow/prow-controller-manager:v20211029-f2e5351ee3
+          image: gcr.io/k8s-prow/prow-controller-manager:v20220201-d251d8b00d
           env:
             # Use KUBECONFIG envvar rather than --kubeconfig flag in order to provide multiple configs to merge.
             - name: KUBECONFIG
@@ -46,6 +52,18 @@ spec:
             - name: kubeconfig
               mountPath: /etc/kubeconfig
               readOnly: true
+          livenessProbe: # Pod is killed if this fails 3 times.
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          readinessProbe: # Pod is not considered ready (for rolling deploy and request routing) if this fails 3 times.
+            httpGet:
+              path: /healthz/ready
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 3
       volumes:
         - name: github-token
           secret:

@@ -25,7 +25,7 @@ postsubmits:
           - |
             set -x
             ls -ali
-            chmod a+x *.sh            
+            chmod a+x *.sh
 
             #Configure git SSH key from ssh-key secret
             mkdir -p ~/.ssh
