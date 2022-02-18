@@ -1,6 +1,7 @@
 postsubmits:
+ #ppc64le-cloud/docker-ce-build:
   alunsin/docker-ce-build:
-    - name: postsubmit-build-docker-al
+    - name: postsubmit-build-docker
       cluster: k8s-ppc64le-cluster
       decorate: true
       branches:
@@ -24,8 +25,6 @@ postsubmits:
           - -c
           - |
             set -x
-            ls -ali
-            chmod a+x *.sh
 
             #Configure git SSH key from ssh-key secret
             mkdir -p ~/.ssh
@@ -94,13 +93,27 @@ postsubmits:
           args:
           - -c
           - |
-            cd ..
-            rm -rf docker-ce-build
-            git clone https://github.com/florencepascual/docker-ce-build
-            cd docker-ce-build
-            chmod a+x *.sh
+            ##
+            # The job is populated with the file from the 'prow-job-tracking'.
+            # We need to switch to the main branch which contains the scripts need by this job.
+            ###
+
+            #MAIN_BRANCH=main
+            MAIN_BRANCH=dev-docker-build
+            TRIGER_FILE=postsubmit-build-docker
+
+            #Backup timestamp file from the previous job
+            cp job/${TRIGER_FILE} /tmp
+
+            git fetch https://github.com/${REPO_OWNER}/${REPO_NAME} ${MAIN_BRANCH}
+            git branch --force ${MAIN_BRANCH} FETCH_HEAD
+            git checkout ${MAIN_BRANCH}
+
+            #Restore the timestamp file from the previous job
+            cp /tmp/${TRIGER_FILE} env/date.list
+
             ./prow-build-containerd.sh
-            exitCode_script=`echo $?`
+            exitCode_script=$?
             echo "Exit code of the script prow-build-containerd : $exitCode_script"
             if [[ $exitCode_script -eq 0 ]]
             then
