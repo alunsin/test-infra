@@ -6,7 +6,7 @@ postsubmits:
       decorate: true
       branches:
         - dev-docker-build
-        # -  refacto-dockerd-starting
+        # -  main
       run_if_changed: 'env/env.list'
       reporter_config:
         slack:
