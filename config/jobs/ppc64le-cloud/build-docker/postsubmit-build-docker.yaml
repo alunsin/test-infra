@@ -116,12 +116,10 @@ postsubmits:
             ./prow-build-containerd.sh
             exitCode_script=$?
             echo "Exit code of the script prow-build-containerd : $exitCode_script"
-            if [[ $exitCode_script -eq 0 ]]
+            if [[ $exit_code_script -eq 0 ]]
             then
-              echo "Success"
               exit 0
             else
-              echo "Fail"
               exit 1
             fi
           securityContext:
