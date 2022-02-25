@@ -32,10 +32,7 @@ function main() {
   parseArgs "$@"
 
   # Generate PJ and Pod.
-  #GIT_BRANCH=dev-docker-build
-  GIT_BRANCH=pr/add-trigger-prow-job-from-git
-  #GIT_BRANCH=prow-job-tracking
-  docker run -i --rm -v "${PWD}:${PWD}" -v "${config}:${config}" ${job_config_mnt} -w "${PWD}" gcr.io/k8s-prow/mkpj "--config-path=${config}" "--job=${job}" ${job_config_flag} "-base-ref=${GIT_BRANCH}"> "${PWD}/pj.yaml"
+  docker run -i --rm -v "${PWD}:${PWD}" -v "${config}:${config}" ${job_config_mnt} -w "${PWD}" gcr.io/k8s-prow/mkpj "--config-path=${config}" "--job=${job}" ${job_config_flag} "${base_ref_flag}"> "${PWD}/pj.yaml"
   docker run -i --rm -v "${PWD}:${PWD}" -w "${PWD}" ${MKPOD_IMAGE} --build-id=snowflake "--prow-job=${PWD}/pj.yaml" > "${PWD}/pod.yaml"
 
   echo "Applying pod to the mkpod cluster. Configure kubectl for the mkpod cluster with:"
@@ -46,6 +43,7 @@ function main() {
 
 function parseArgs() {
   job="${1:-}"
+  git_ref="${2:-}"
   config="${CONFIG_PATH:-}"
   job_config_path="${JOB_CONFIG_PATH:-}"
   out_dir="${OUT_DIR:-/tmp/prowjob-out}"
@@ -70,6 +68,11 @@ function parseArgs() {
   if [[ -n "${job_config_path}" ]]; then
     job_config_flag="--job-config-path=${job_config_path}"
     job_config_mnt="-v ${job_config_path}:${job_config_path}"
+  fi
+
+  base_ref_flag=""
+  if [[ -n "${git_ref}" ]]; then
+    base_ref_flag="-base-ref=${git_ref}"
   fi
 }
 
