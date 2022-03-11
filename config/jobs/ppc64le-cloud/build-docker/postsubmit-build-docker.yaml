@@ -1,12 +1,13 @@
 postsubmits:
  #ppc64le-cloud/docker-ce-build:
-  alunsin/docker-ce-build:
+ alunsin/docker-ce-build:
     - name: postsubmit-build-docker
       cluster: k8s-ppc64le-cluster
       decorate: true
+      decoration_config:
+        timeout: 3h
       branches:
-        - dev-docker-build
-        # -  main
+          -  main
       run_if_changed: 'env/env.list'
       reporter_config:
         slack:
@@ -26,21 +27,19 @@ postsubmits:
           - |
             set -x
 
-            #Configure git SSH key from ssh-key secret
+            #Configure git SSH key from th ssh-key secret 'git-ssh-docker-ce-build'
+            echo "* Set up the ssh key for git *"
             mkdir -p ~/.ssh
             cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
+            echo "* Start prow-build-docker *"
             ./prow-build-docker.sh
-            exit_code_script=`echo $?`
-            echo "Exit code of the script prow-build-docker : $exit_code_script"
-            if [[ $exit_code_script -eq 0 ]]
-            then
-              exit 0
-            else
-              exit 1
-            fi
+            rc=$?
+            [ $rc != 0 ] && echo "ERROR: prow-build-docker exited with code:$rc"
+            exit $rc
+
           securityContext:
             privileged: true
           volumeMounts:
@@ -55,29 +54,21 @@ postsubmits:
                 secretKeyRef:
                   name: docker-s3-credentials
                   key: password
-          # resources:
-          #   requests:
-          #     cpu: 4000m
-          #     memory: 8Gi
-          #   limits:
-          #     cpu: 4000m
-          #     memory: 8Gi
         volumes:
         - name: docker-root
           emptyDir: {}
         - name: ssh-key
           secret:
-#            secretName: git-ssh-docker-ce-build
-            secretName: git-ssh-alunsin-docker-ce-build
+            secretName: git-ssh-docker-ce-build
 
     - name: postsubmit-build-containerd
       cluster: k8s-ppc64le-cluster
       decorate: true
       decoration_config:
-        timeout: 2h30m
-      run_if_changed: 'env/date.list'
+        timeout: 3h
+      run_if_changed: 'job/postsubmit-build-docker'
       branches:
-        - main
+        - prow-job-tracking
       reporter_config:
         slack:
           channel: 'prow-job-notifications'
@@ -99,29 +90,32 @@ postsubmits:
             # We need to switch to the main branch which contains the scripts need by this job.
             ###
 
-            #MAIN_BRANCH=main
-            MAIN_BRANCH=dev-docker-build
-            TRIGER_FILE=postsubmit-build-docker
+            #Set this to your dev branch for testing
+            WORK_BRANCH=main
 
-            #Backup timestamp file from the previous job
-            cp job/${TRIGER_FILE} /tmp
+            #Timestamp file from the tracking branch (required to access the proper s3 directory)
+            TIMESTAMP_FILE=postsubmit-build-docker
 
-            git fetch https://github.com/${REPO_OWNER}/${REPO_NAME} ${MAIN_BRANCH}
-            git branch --force ${MAIN_BRANCH} FETCH_HEAD
-            git checkout ${MAIN_BRANCH}
+            echo "* Setup the files from git *"
 
-            #Restore the timestamp file from the previous job
-            cp /tmp/${TRIGER_FILE} env/date.list
+            echo "* Backup timestamp file from the previous job *"
+            cp job/${TIMESTAMP_FILE} /tmp
 
+            echo "* Switch back to the git branch: ${REPO_OWNER}/${REPO_NAME}/${WORK_BRANCH} *"
+            git fetch https://github.com/${REPO_OWNER}/${REPO_NAME} ${WORK_BRANCH}
+            git branch --force ${WORK_BRANCH} FETCH_HEAD
+            git checkout ${WORK_BRANCH}
+
+            echo "* Restore back to the time stamp file from the tracking branch *"
+            cp /tmp/${TIMESTAMP_FILE} env/date.list
+            cat env/date.list
+
+            echo "* Start prow-build-containerd *"
             ./prow-build-containerd.sh
-            exitCode_script=$?
-            echo "Exit code of the script prow-build-containerd : $exitCode_script"
-            if [[ $exit_code_script -eq 0 ]]
-            then
-              exit 0
-            else
-              exit 1
-            fi
+            rc=$?
+            [ $rc != 0 ] && echo "ERROR: prow-build-containerd exited with code:$rc"
+            exit $rc
+
           securityContext:
             privileged: true
           volumeMounts:
@@ -133,18 +127,153 @@ postsubmits:
                 secretKeyRef:
                   name: docker-s3-credentials
                   key: password
-            - name: DOCKER_SECRET_AUTH
+        volumes:
+        - name: docker-root
+          emptyDir: {}
+
+    - name: postsubmit-test-docker-staging
+      cluster: k8s-ppc64le-cluster
+      decorate: true
+      decoration_config:
+        timeout: 2h30m
+      run_if_changed: 'env/test-staging.list'
+      branches:
+        - main
+      reporter_config:
+        slack:
+          channel: 'prow-job-notifications'
+          job_states_to_report:
+           - success
+           - failure
+           - error
+          report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
+      spec:
+        containers:
+        - image: quay.io/powercloud/docker-ce-build
+          command:
+          - /bin/bash
+          args:
+          - -c
+          - |
+            ##
+            # The job is populated with the file from the 'prow-job-tracking'.
+            # We need to switch to the main branch which contains the scripts need by this job.
+
+            #Timestamp file from the tracking branch (required to access the proper s3 directory)
+            TIMESTAMP_FILE=postsubmit-build-docker
+
+            FILE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/prow-job-tracking/job/${TIMESTAMP_FILE}"
+
+            echo "* Retrieving the timestamp file from the tracking branch: ${FILE_URL}"
+            wget -O env/date.list ${FILE_URL}
+            cat env/date.list
+
+            echo "* Start row-test-docker-staging.sh*"
+            ./prow-test-docker-staging.sh
+            rc=$?
+            [ $rc != 0 ] && echo "ERROR: row-test-docker-staging exited with code:$rc"
+            exit $rc
+
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: docker-root
+            mountPath: /var/lib/docker
+          env:
+            - name: S3_SECRET_AUTH
               valueFrom:
                 secretKeyRef:
-                  name: docker-token
-                  key: .dockerconfigjson
-          resources:
-            requests:
-              cpu: 4000m
-              memory: 8Gi
-            limits:
-              cpu: 4000m
-              memory: 8Gi
+                  name: docker-s3-credentials
+                  key: password
+        volumes:
+        - name: docker-root
+          emptyDir: {}
+
+##########
+# DEV only
+###########
+    - name: postsubmit-publish-docker
+      cluster: k8s-ppc64le-cluster
+      decorate: true
+      decoration_config:
+        timeout: 2h30m
+      run_if_changed: 'env/publish.list'
+      branches:
+        - main
+      reporter_config:
+        slack:
+          channel: 'prow-job-notifications'
+          job_states_to_report:
+           - success
+           - failure
+           - error
+          report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
+      spec:
+        containers:
+        - image: quay.io/powercloud/docker-ce-build
+          command:
+          - /bin/bash
+          args:
+          - -c
+          - |
+            ##
+            # The job is populated with the file from the 'prow-job-tracking'.
+            # We need to switch to the main branch which contains the scripts need by this job.
+
+            #Timestamp file from the tracking branch (required to access the proper s3 directory)
+            TIMESTAMP_FILE=postsubmit-build-docker
+
+            FILE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/prow-job-tracking/job/${TIMESTAMP_FILE}"
+
+            echo "* Retrieving the timestamp file from the tracking branch: ${FILE_URL}"
+            wget -O env/date.list ${FILE_URL}
+            cat env/date.list
+
+            echo "* Start PUSH To COS*"
+            set -u
+            set -x
+
+            # Path to the scripts
+            PATH_SCRIPTS="/home/prow/go/src/github.com/${REPO_OWNER}/${REPO_NAME}"
+
+            if [[ -z ${ARTIFACTS} ]]
+            then
+                ARTIFACTS=/logs/artifacts
+                echo "Setting ARTIFACTS to ${ARTIFACTS}"
+                mkdir -p ${ARTIFACTS}
+            fi
+
+            export PATH_SCRIPTS
+
+            # Go to the workdir
+            cd /workspace
+
+            # Get the env file and the dockertest repo and the latest built of containerd if we don't want to build containerd
+            echo "** Set up (env files) **"
+            ${PATH_SCRIPTS}/get-env.sh
+            ${PATH_SCRIPTS}/get-env-containerd.sh
+
+            set -o allexport
+            source env.list
+            source date.list
+            export DATE
+
+            ${PATH_SCRIPTS}/push-COS.sh
+            rc=$?
+            [ $rc != 0 ] && echo "ERROR: push to COS exited with code:$rc"
+            exit $rc
+
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: docker-root
+            mountPath: /var/lib/docker
+          env:
+            - name: S3_SECRET_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: docker-s3-credentials
+                  key: password
         volumes:
         - name: docker-root
           emptyDir: {}
