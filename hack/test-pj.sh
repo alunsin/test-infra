@@ -38,6 +38,13 @@ function main() {
   echo "Applying pod to the mkpod cluster. Configure kubectl for the mkpod cluster with:"
   echo "Press Control+c for exiting the script"
   pod=$(kubectl apply -f "${PWD}/pod.yaml" | cut -d ' ' -f 1)
+  echo ""
+  echo "POD=${pod}" > ~/current_prow_job.env
+  echo "Wrote POD=${pod} ~/current_prow_job.env ."
+  echo "After the pod completed the initialization step, you can run this command to display the log of the job:"
+  echo ". ~/current_prow_job.env && kubectl logs -f ${pod} -c test"
+  echo ""
+
   kubectl get "${pod}" -w
 }
 
