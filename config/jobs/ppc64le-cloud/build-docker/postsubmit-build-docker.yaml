@@ -168,10 +168,10 @@ postsubmits:
             wget -O env/date.list ${FILE_URL}
             cat env/date.list
 
-            echo "* Start row-test-docker-staging.sh*"
+            echo "* Start prow-test-docker.sh *"
             ./prow-test-docker.sh staging
             rc=$?
-            [ $rc != 0 ] && echo "ERROR: row-test-docker-staging exited with code:$rc"
+            [ $rc != 0 ] && echo "ERROR: prow-test-docker exited with code:$rc"
             exit $rc
 
           securityContext:
@@ -226,10 +226,10 @@ postsubmits:
             wget -O env/date.list ${FILE_URL}
             cat env/date.list
 
-            echo "* Start row-test-docker-staging.sh*"
+            echo "* Start prow-test-docker.sh *"
             ./prow-test-docker.sh release
             rc=$?
-            [ $rc != 0 ] && echo "ERROR: row-test-docker-staging exited with code:$rc"
+            [ $rc != 0 ] && echo "ERROR: prow-test-docker exited with code:$rc"
             exit $rc
 
           securityContext:
