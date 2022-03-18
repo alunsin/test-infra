@@ -1,6 +1,5 @@
 postsubmits:
- #ppc64le-cloud/docker-ce-build:
- alunsin/docker-ce-build:
+ ppc64le-cloud/docker-ce-build:
     - name: postsubmit-build-docker
       cluster: k8s-ppc64le-cluster
       decorate: true
@@ -18,6 +17,13 @@ postsubmits:
            - error
           report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
       spec:
+        nodeSelector:
+          dedicated: runtimesTeam
+        tolerations:
+        - key: dedicated
+          operator: "Equal"
+          value: runtimesTeam
+          effect: "NoSchedule"
         containers:
         - image: quay.io/powercloud/docker-ce-build
           command:
@@ -25,7 +31,10 @@ postsubmits:
           args:
           - -c
           - |
-            set -x
+            set -o errexit
+            set -o nounset
+            set -o pipefail
+            set -o xtrace
 
             #Configure git SSH key from th ssh-key secret 'git-ssh-docker-ce-build'
             echo "* Set up the ssh key for git *"
@@ -59,7 +68,7 @@ postsubmits:
           emptyDir: {}
         - name: ssh-key
           secret:
-            secretName: git-ssh-docker-ce-build
+           secretName: git-ssh-docker-ce-build
 
     - name: postsubmit-build-containerd
       cluster: k8s-ppc64le-cluster
@@ -78,6 +87,13 @@ postsubmits:
            - error
           report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
       spec:
+        nodeSelector:
+          dedicated: runtimesTeam
+        tolerations:
+        - key: dedicated
+          operator: "Equal"
+          value: runtimesTeam
+          effect: "NoSchedule"
         containers:
         - image: quay.io/powercloud/docker-ce-build
           command:
@@ -89,6 +105,11 @@ postsubmits:
             # The job is populated with the file from the 'prow-job-tracking'.
             # We need to switch to the main branch which contains the scripts need by this job.
             ###
+
+            set -o errexit
+            set -o nounset
+            set -o pipefail
+            set -o xtrace
 
             #Set this to your dev branch for testing
             WORK_BRANCH=main
@@ -148,6 +169,13 @@ postsubmits:
            - error
           report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
       spec:
+        nodeSelector:
+          dedicated: runtimesTeam
+        tolerations:
+        - key: dedicated
+          operator: "Equal"
+          value: runtimesTeam
+          effect: "NoSchedule"
         containers:
         - image: quay.io/powercloud/docker-ce-build
           command:
@@ -158,6 +186,12 @@ postsubmits:
             ##
             # The job is populated with the file from the 'prow-job-tracking'.
             # We need to switch to the main branch which contains the scripts need by this job.
+            ##
+
+            set -o errexit
+            set -o nounset
+            set -o pipefail
+            set -o xtrace
 
             #Timestamp file from the tracking branch (required to access the proper s3 directory)
             TIMESTAMP_FILE=postsubmit-build-docker
@@ -206,6 +240,13 @@ postsubmits:
            - error
           report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
       spec:
+        nodeSelector:
+          dedicated: runtimesTeam
+        tolerations:
+        - key: dedicated
+          operator: "Equal"
+          value: runtimesTeam
+          effect: "NoSchedule"
         containers:
         - image: quay.io/powercloud/docker-ce-build
           command:
@@ -216,6 +257,11 @@ postsubmits:
             ##
             # The job is populated with the file from the 'prow-job-tracking'.
             # We need to switch to the main branch which contains the scripts need by this job.
+
+            set -o errexit
+            set -o nounset
+            set -o pipefail
+            set -o xtrace
 
             #Timestamp file from the tracking branch (required to access the proper s3 directory)
             TIMESTAMP_FILE=postsubmit-build-docker
@@ -230,96 +276,6 @@ postsubmits:
             ./prow-test-docker.sh release
             rc=$?
             [ $rc != 0 ] && echo "ERROR: prow-test-docker exited with code:$rc"
-            exit $rc
-
-          securityContext:
-            privileged: true
-          volumeMounts:
-          - name: docker-root
-            mountPath: /var/lib/docker
-          env:
-            - name: S3_SECRET_AUTH
-              valueFrom:
-                secretKeyRef:
-                  name: docker-s3-credentials
-                  key: password
-        volumes:
-        - name: docker-root
-          emptyDir: {}
-
-
-##########
-# DEV only
-###########
-    - name: postsubmit-publish-docker
-      cluster: k8s-ppc64le-cluster
-      decorate: true
-      decoration_config:
-        timeout: 2h30m
-      run_if_changed: 'env/publish.list'
-      branches:
-        - main
-      reporter_config:
-        slack:
-          channel: 'prow-job-notifications'
-          job_states_to_report:
-           - success
-           - failure
-           - error
-          report_template: 'Job {{.Spec.Job}} of type {{.Spec.Type}} ended with state {{.Status.State}}. <!subteam^S02N6DWBX0F> <{{.Status.URL}}|View logs>'
-      spec:
-        containers:
-        - image: quay.io/powercloud/docker-ce-build
-          command:
-          - /bin/bash
-          args:
-          - -c
-          - |
-            ##
-            # The job is populated with the file from the 'prow-job-tracking'.
-            # We need to switch to the main branch which contains the scripts need by this job.
-
-            #Timestamp file from the tracking branch (required to access the proper s3 directory)
-            TIMESTAMP_FILE=postsubmit-build-docker
-
-            FILE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/prow-job-tracking/job/${TIMESTAMP_FILE}"
-
-            echo "* Retrieving the timestamp file from the tracking branch: ${FILE_URL}"
-            wget -O env/date.list ${FILE_URL}
-            cat env/date.list
-
-            echo "* Start PUSH To COS*"
-            set -u
-            set -x
-
-            # Path to the scripts
-            PATH_SCRIPTS="/home/prow/go/src/github.com/${REPO_OWNER}/${REPO_NAME}"
-
-            if [[ -z ${ARTIFACTS} ]]
-            then
-                ARTIFACTS=/logs/artifacts
-                echo "Setting ARTIFACTS to ${ARTIFACTS}"
-                mkdir -p ${ARTIFACTS}
-            fi
-
-            export PATH_SCRIPTS
-
-            # Go to the workdir
-            cd /workspace
-
-            # Get the env file and the dockertest repo and the latest built of containerd if we don't want to build containerd
-            echo "** Set up (env files) **"
-            ${PATH_SCRIPTS}/get-env.sh
-            ${PATH_SCRIPTS}/get-env-containerd.sh
-
-            set -o allexport
-            source env.list
-            source date.list
-            export DATE
-
-            ${PATH_SCRIPTS}/push-COS.sh
-            rc=$?
-            [ $rc != 0 ] && echo "ERROR: push to COS exited with code:$rc"
             exit $rc
 
           securityContext:
