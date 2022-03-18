@@ -36,7 +36,7 @@ postsubmits:
             set -o pipefail
             set -o xtrace
 
-            #Configure git SSH key from th ssh-key secret 'git-ssh-docker-ce-build'
+            # Set the SSH key for git from the secret 'git-ssh-docker-ce-build'
             echo "* Set up the ssh key for git *"
             mkdir -p ~/.ssh
             cp /etc/ssh-key/ssh-privatekey  ~/.ssh/id_rsa
@@ -102,8 +102,8 @@ postsubmits:
           - -c
           - |
             ##
-            # The job is populated with the file from the 'prow-job-tracking'.
-            # We need to switch to the main branch which contains the scripts need by this job.
+            # This job is populated with the files from the 'prow-job-tracking' branch.
+            # We switch to the 'main' branch, as it contains the scripts used by this job.
             ###
 
             set -o errexit
@@ -155,8 +155,6 @@ postsubmits:
     - name: postsubmit-test-docker-staging
       cluster: k8s-ppc64le-cluster
       decorate: true
-      decoration_config:
-        timeout: 2h30m
       run_if_changed: 'env/test-staging.list'
       branches:
         - main
@@ -183,11 +181,6 @@ postsubmits:
           args:
           - -c
           - |
-            ##
-            # The job is populated with the file from the 'prow-job-tracking'.
-            # We need to switch to the main branch which contains the scripts need by this job.
-            ##
-
             set -o errexit
             set -o nounset
             set -o pipefail
@@ -198,7 +191,7 @@ postsubmits:
 
             FILE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/prow-job-tracking/job/${TIMESTAMP_FILE}"
 
-            echo "* Retrieving the timestamp file from the tracking branch: ${FILE_URL}"
+            echo "* Retrieve the timestamp file from the tracking branch: ${FILE_URL} *"
             wget -O env/date.list ${FILE_URL}
             cat env/date.list
 
@@ -226,8 +219,6 @@ postsubmits:
     - name: postsubmit-test-docker-release
       cluster: k8s-ppc64le-cluster
       decorate: true
-      decoration_config:
-        timeout: 2h30m
       run_if_changed: 'env/test-release.list'
       branches:
         - main
@@ -254,10 +245,6 @@ postsubmits:
           args:
           - -c
           - |
-            ##
-            # The job is populated with the file from the 'prow-job-tracking'.
-            # We need to switch to the main branch which contains the scripts need by this job.
-
             set -o errexit
             set -o nounset
             set -o pipefail
@@ -268,7 +255,7 @@ postsubmits:
 
             FILE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/prow-job-tracking/job/${TIMESTAMP_FILE}"
 
-            echo "* Retrieving the timestamp file from the tracking branch: ${FILE_URL}"
+            echo "* Retrieve the timestamp file from the tracking branch: ${FILE_URL} *"
             wget -O env/date.list ${FILE_URL}
             cat env/date.list
 
