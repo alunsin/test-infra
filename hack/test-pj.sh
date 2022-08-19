@@ -33,7 +33,7 @@ function main() {
 
   # Generate PJ and Pod.
   docker run -i --rm -v "${PWD}:${PWD}" -v "${config}:${config}" ${job_config_mnt} -w "${PWD}" gcr.io/k8s-prow/mkpj "--config-path=${config}" "--job=${job}" ${job_config_flag} "${base_ref_flag}"> "${PWD}/pj.yaml"
-  docker run -i --rm -v "${PWD}:${PWD}" -w "${PWD}" ${MKPOD_IMAGE} --build-id=snowflake "--prow-job=${PWD}/pj.yaml" > "${PWD}/pod.yaml"
+  docker run -i --rm -v "${PWD}:${PWD}" -w "${PWD}" ${MKPOD_IMAGE} --build-id=snowflake "--prow-job=${PWD}/pj.yaml" --local > "${PWD}/pod.yaml"
 
   echo "Applying pod to the mkpod cluster. Configure kubectl for the mkpod cluster with:"
   echo "Press Control+c for exiting the script"
